@@ -1,0 +1,6 @@
+.DS_Store
+._*
+.AppleDouble
+*.sw?
+!.gitkeep
+Session.vim
