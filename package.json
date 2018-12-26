@@ -1,0 +1,13 @@
+{
+	"name": "edinfo-server",
+	"version": "0.0.1",
+	"description": "Posts Elite Dangerous journal data on a local web server",
+	"main": "main.js",
+	"keywords": [
+		"elite-dangerous",
+		"elite",
+		"games"
+	],
+	"author": "SilverWolf",
+	"license": "Unlicense"
+}
