@@ -1,0 +1,17 @@
+<html>
+	<head>
+		<meta charset="utf8" />
+	</head>
+	<body>
+		<p id="results-display">Hello, world!</p>
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			let socket = io() // defaults to server hosting the page
+			socket.on("new-data", function(data) {
+				console.log("Received: "+data)
+				let p = document.getElementById("results-display")
+				p.textContent = data
+			})
+		</script>
+	</body>
+</html>
