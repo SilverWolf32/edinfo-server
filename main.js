@@ -8,6 +8,7 @@ express.get("/", function(request, result) {
 
 socketio.on("connection", function(socket) {
 	console.log("Connected")
+	sendCurrentInfo()
 	socket.on("disconnect", function() {
 		console.log("Disconnected")
 	})
@@ -33,6 +34,10 @@ var watching = false
 
 // path.normalize() and path.join() to correctly handle Windows paths
 var journalDir = path.normalize(path.join(require("os").homedir(), "Saved Games/Frontier Developments/Elite Dangerous"))
+
+var latestEvent = null
+var currentSystem = null
+var currentStation = null
 
 fs.readFile(path.join(journalDir, "Status.json"), "utf8", function(error, data) {
 	if (error) {
@@ -76,10 +81,6 @@ fs.readFile(path.join(journalDir, "Status.json"), "utf8", function(error, data) 
 	watcher.on("change", function(changedPath) {
 		updateJournal(changedPath)
 	})
-	
-	var latestEvent = null
-	var currentSystem = null
-	var currentStation = null
 	
 	function updateJournal(path) {
 		if (!watching) {
@@ -150,17 +151,20 @@ fs.readFile(path.join(journalDir, "Status.json"), "utf8", function(error, data) 
 						continue
 					}
 				}
-				
-				payload = {
-					"system": currentSystem,
-					"station": currentStation
-				}
-				data = JSON.stringify(payload, null, "\t")
-				sendJournalEvent(data)
+				sendCurrentInfo()
 			}
 		})
 	}
 })
+
+function sendCurrentInfo() {
+	payload = {
+		"system": currentSystem,
+		"station": currentStation
+	}
+	data = JSON.stringify(payload, null, "\t")
+	sendJournalEvent(data)
+}
 
 function sendJournalEvent(event) {
 	console.log("Sending journal event: " + event)
