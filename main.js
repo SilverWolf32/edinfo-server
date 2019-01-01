@@ -1,6 +1,7 @@
 let express = require("express")()
 let server = require("http").Server(express)
 let socketio = require("socket.io")(server)
+let requestpromise = require("request-promise-native")
 
 express.get("/", function(request, result) {
 	// result.sendFile(__dirname + "/test.html")
@@ -173,4 +174,100 @@ function sendCurrentInfo() {
 function sendJournalEvent(event) {
 	console.log("Sending journal event: " + event)
 	socketio.emit("new-data", event)
+}
+
+express.get("/nearby-stations", function(request, result) {
+	try {
+		var r = request.query.r
+	} catch {
+		r = 1
+	}
+	getNearbyStations(r)
+	.then(function (nearbyStations) {
+		result.json(nearbyStations)
+	})
+	.catch(function (error) {
+		console.log(error)
+		result.json(String(error))
+	})
+})
+
+async function getNearbyStations(radius) {
+	if (currentSystem == null) {
+		return Promise.reject(new Error("No current system"))
+	}
+	// currentSystem = "Diaguandri"
+	console.log("Getting stations near "+currentSystem+" from EDSM")
+	return requestpromise("https://www.edsm.net/api-v1/sphere-systems?systemName="+currentSystem+"&radius="+radius+"&showId=1")
+	.then(async function(json) {
+		try {
+			var systems = JSON.parse(json)
+		} catch {
+			console.log("Invalid JSON from EDSM")
+		}
+		var promises = []
+		for (i = 0; i < systems.length; i++) {
+			let system = systems[i]
+			// console.log(system)
+			promises.push(requestpromise("https://www.edsm.net/api-system-v1/stations/?systemId="+system.id))
+		}
+		return await Promise.all(promises)
+		.then(function(stationJSONarray) {
+			// console.log(stationJSONarray)
+			let nearbyStations = []
+			for (i = 0; i < stationJSONarray.length; i++) {
+				try {
+					let stationsJSON = stationJSONarray[i]
+					var systemInfo = JSON.parse(stationsJSON)
+				} catch {
+					console.log("Invalid station JSON from EDSM: "+stationsJSON)
+				}
+				console.log(systemInfo)
+				
+				// find system
+				let systemId = systemInfo.id
+				let system = null
+				for (j = 0; j < systems.length; j++) {
+					if (systems[j].id == systemId) {
+						system = systems[j]
+						break
+					}
+				}
+				
+				let stations = systemInfo.stations
+				for (j = 0; j < stations.length; j++) {
+					stations[j].systemName = system.name
+					stations[j].distance = system.distance
+					nearbyStations.push(stations[j])
+				}
+				// console.log("Adding " + JSON.stringify(stations))
+			}
+			return nearbyStations
+		})
+	})
+	.then(function(nearbyStations) {
+		nearbyStations.sort(function(a, b) {
+			if (a.distance < b.distance) {
+				return -1
+			} else if (a.distance > b.distance) {
+				return 1
+			}
+			// then sort by name
+			if (a.name < b.name) {
+				return -1
+			} else if (a.name > b.name) {
+				return 1
+			}
+			return 0
+		})
+		console.log("--------")
+		console.log(nearbyStations)
+		// result.json(systems)
+		// result.json(nearbyStations)
+		// return systems
+		return nearbyStations
+	})
+	.catch(function(error) {
+		console.log(error)
+	})
 }
