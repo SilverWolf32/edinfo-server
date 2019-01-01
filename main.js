@@ -3,7 +3,11 @@ let server = require("http").Server(express)
 let socketio = require("socket.io")(server)
 
 express.get("/", function(request, result) {
-	result.sendFile(__dirname + "/test.html")
+	// result.sendFile(__dirname + "/test.html")
+	result.json({
+		"system": currentSystem,
+		"station": currentStation
+	})
 })
 
 socketio.on("connection", function(socket) {
