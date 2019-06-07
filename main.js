@@ -277,3 +277,70 @@ async function getNearbyStations(radius) {
 		console.log(error)
 	})
 }
+
+express.get("/api/hudmatrix", function(request, result) {
+	getHUDMatrix()
+	.then(function (hudmatrix) {
+		result.json(hudmatrix)
+	})
+	.catch(function (error) {
+		console.log(error)
+		result.json(String(error))
+	})
+})
+
+var util = require("util")
+fs.readFilePromise = util.promisify(fs.readFile)
+var xml2js = require("xml2js")
+xml2js.parseStringPromise = util.promisify(xml2js.parseString)
+
+async function getHUDMatrix() {
+	console.log("Fetching HUD...")
+	
+	// return Promise.reject("Not implemented")
+	
+	let hudFile = path.normalize(path.join(require("os").homedir(), "AppData/Local/Frontier Developments/Elite Dangerous/Options/Graphics/GraphicsConfigurationOverride.xml"))
+	
+	return fs.readFilePromise(hudFile, "utf8")
+	.catch(function(error) {
+		// throw(error)
+		console.log(error)
+		// tru again with fake journal
+		hudFile = "/tmp/GraphicsConfigurationOverride.xml"
+		return fs.readFilePromise(hudFile, "utf8")
+		.then(function(data) {
+			console.log("Fake HUD file is accessible.")
+			return data
+		})
+		.catch(function(error) {
+			// throw(error)
+			console.log(error)
+			return Promise.reject("No HUD file")
+		})
+	})
+	.then(function(data) {
+		console.log(data)
+		return xml2js.parseStringPromise(data)
+	})
+	.then(function(data) {
+		console.log("Parse result:", JSON.stringify(data, null, "\t"))
+		
+		let matrix = data.GraphicsConfig.GUIColour[0].Default[0]
+		let red = matrix.MatrixRed[0].replace(/ /g, "").split(",").map((item) => Number(item))
+		let green = matrix.MatrixGreen[0].replace(/ /g, "").split(",").map((item) => Number(item))
+		let blue = matrix.MatrixBlue[0].replace(/ /g, "").split(",").map((item) => Number(item))
+		/* let outMatrix = {
+			"red": red,
+			"green": green,
+			"blue": blue
+		} */
+		let outMatrix = [red, green, blue]
+		console.log("Matrix:", matrix)
+		console.log("Out:", outMatrix)
+		
+		return Promise.resolve(outMatrix)
+	}).catch(function(error) {
+		console.log("Parsing failed:", error)
+		return Promise.reject(error)
+	})
+}
