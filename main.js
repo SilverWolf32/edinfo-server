@@ -1,9 +1,15 @@
 let express = require("express")()
+let expressStatic = require("serve-static") // comes with Express
 let server = require("http").Server(express)
 let socketio = require("socket.io")(server)
 let requestpromise = require("request-promise-native")
 
-express.get("/", function(request, result) {
+/* express.get("/", function(request, result) {
+	result.sendFile(__dirname + "/app/index.html")
+}) */
+express.use(expressStatic("app"))
+
+express.get("/api", function(request, result) {
 	// result.sendFile(__dirname + "/test.html")
 	result.json({
 		"system": currentSystem,
@@ -176,7 +182,7 @@ function sendJournalEvent(event) {
 	socketio.emit("new-data", event)
 }
 
-express.get("/nearby-stations", function(request, result) {
+express.get("/api/nearby-stations", function(request, result) {
 	try {
 		var r = request.query.r
 	} catch {
