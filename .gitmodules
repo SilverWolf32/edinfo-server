@@ -1,0 +1,3 @@
+[submodule "app"]
+	path = app
+	url = https://github.com/SilverWolf32/edinfo-server-webapp
