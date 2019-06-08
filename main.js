@@ -358,15 +358,11 @@ express.get("/api/hudcolorfilter.svg", function(request, result) {
 	})
 })
 express.get("/api/regenerate-hud-filter", function(request, result) {
-	console.log("Regenerating SVG")
-	generateHUDFilterSVG()
-	.then(function(svg) {
-		return fs.writeFilePromise("app/hudcolorfilter.svg", svg)
-	})
+	regenerateHUDFilterSVGFile()
 	.then(function(fsResult) {
 		result.send("<a href=\"/hudcolorfilter.svg\">SVG regenerated.</a>")
 	})
-	.catch(function (error) {
+	.catch(function(error) {
 		console.log(error)
 		result.json(String(error))
 	})
@@ -417,5 +413,16 @@ async function generateHUDFilterSVG() {
 		return svgFilter
 	})
 }
+async function regenerateHUDFilterSVGFile() {
+	console.log("Regenerating SVG")
+	return generateHUDFilterSVG()
+	.then(function(svg) {
+		return fs.writeFilePromise("app/hudcolorfilter.svg", svg)
+	})
+}
 
+regenerateHUDFilterSVGFile()
+.catch(function(error) {
+	console.log(error)
+})
 
