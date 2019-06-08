@@ -344,3 +344,67 @@ async function getHUDMatrix() {
 		return Promise.reject(error)
 	})
 }
+
+express.get("/api/hudcolorfilter.svg", function(request, result) {
+	generateHUDFilterSVG()
+	.then(function(svg) {
+		result.set("Content-Type", "application/svg")
+		result.send(svg)
+	})
+	.catch(function (error) {
+		console.log(error)
+		result.json(String(error))
+	})
+})
+socketio.on("regenHUDfilter", function(callback) {
+	console.log("Regenerating SVG")
+	callback("Done!")
+})
+async function generateHUDFilterSVG() {
+	return getHUDMatrix()
+	.catch(function(error) {
+		console.log("Couldn't get HUD matrix:", error)
+		return [
+			[1, 0, 0],
+			[0, 1, 0],
+			[0, 0, 1]
+		]
+	})
+	.then(function(matrix) {
+		console.log("Using matrix:", matrix)
+		
+		// see https://css-tricks.com/color-filters-can-turn-your-gray-skies-blue/
+		
+		// this is swapped from the Elite representation! In the top, out the side
+		let fullMatrix = [
+			[matrix[0][0], matrix[1][0], matrix[2][0], 0, 0],
+			[matrix[0][1], matrix[1][1], matrix[2][1], 0, 0],
+			[matrix[0][2], matrix[1][2], matrix[2][2], 0, 0],
+			[0           , 0           , 0           , 1, 0],
+		]
+		
+		/* fullMatrix = [
+			[0, 0, 0, 0, 0],
+			[1, 1, 1, 1, 0],
+			[0, 0, 0, 0, 0],
+			[0, 0, 0, 1, 0]
+		] */
+		
+		let fullMatrixStr = fullMatrix.map((row) => row.join(" ")).join("\n")
+		
+		let svgFilter = `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+	<defs>
+		<filter id="HUD">
+			<feColorMatrix in="SourceGraphic" type="matrix" values="\n${fullMatrixStr}" />
+		</filter>
+	</defs>
+	<circle cx="64" cy="64" r="64" id="circle" fill="#FFA040" filter="url(#HUD)" />
+</svg>`
+		console.log("Completed SVG filter:\n" + svgFilter)
+		
+		return svgFilter
+	})
+}
+
+
