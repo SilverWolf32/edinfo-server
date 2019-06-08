@@ -193,18 +193,32 @@ express.get("/api/nearby-stations", function(request, result) {
 		result.json(nearbyStations)
 	})
 	.catch(function (error) {
-		console.log(error)
-		result.json(String(error))
+		console.log(error.error)
+		result.status(error.code)
+		result.json(error.error)
 	})
 })
 
 async function getNearbyStations(radius) {
 	if (currentSystem == null) {
-		return Promise.reject(new Error("No current system"))
+		let error = new Error()
+		error.name = "InternalStateError"
+		error.message = "No current system"
+		return Promise.reject({
+			"code": 500,
+			"error": error
+		})
 	}
 	// currentSystem = "Diaguandri"
 	console.log("Getting stations near "+currentSystem+" from EDSM")
 	return requestpromise("https://www.edsm.net/api-v1/sphere-systems?systemName="+currentSystem+"&radius="+radius+"&showId=1")
+	.catch(function(error) {
+		// this will bubble down to the bottom catch, which will recognize it because it has a code
+		return Promise.reject({
+			"code": 503,
+			"error": error
+		})
+	})
 	.then(async function(json) {
 		try {
 			var systems = JSON.parse(json)
@@ -275,6 +289,15 @@ async function getNearbyStations(radius) {
 	})
 	.catch(function(error) {
 		console.log(error)
+		let code = 500
+		if (error.code != undefined) {
+			// this came from above, it's already wrapped up properly with a response code
+			return Promise.reject(error)
+		}
+		return Promise.reject({
+			"code": code,
+			"error": error
+		})
 	})
 }
 
