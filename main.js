@@ -291,6 +291,7 @@ express.get("/api/hudmatrix", function(request, result) {
 
 var util = require("util")
 fs.readFilePromise = util.promisify(fs.readFile)
+fs.writeFilePromise = util.promisify(fs.writeFile)
 var xml2js = require("xml2js")
 xml2js.parseStringPromise = util.promisify(xml2js.parseString)
 
@@ -356,9 +357,19 @@ express.get("/api/hudcolorfilter.svg", function(request, result) {
 		result.json(String(error))
 	})
 })
-socketio.on("regenHUDfilter", function(callback) {
+express.get("/api/regenerate-hud-filter", function(request, result) {
 	console.log("Regenerating SVG")
-	callback("Done!")
+	generateHUDFilterSVG()
+	.then(function(svg) {
+		return fs.writeFilePromise("app/hudcolorfilter.svg", svg)
+	})
+	.then(function(fsResult) {
+		result.send("<a href=\"/hudcolorfilter.svg\">SVG regenerated.</a>")
+	})
+	.catch(function (error) {
+		console.log(error)
+		result.json(String(error))
+	})
 })
 async function generateHUDFilterSVG() {
 	return getHUDMatrix()
