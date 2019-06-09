@@ -4,6 +4,17 @@ let server = require("http").Server(express)
 let socketio = require("socket.io")(server)
 let requestpromise = require("request-promise-native")
 
+// rate limiting for EDSM
+let rateLimitPool = null
+let rateLimitMax = null
+let rateLimitTimeToFull = null // seconds
+let rateLimitSafeInterval = 5 // seconds
+let rateLimitLastUsed = null
+
+let rateLimitEstimatedPool = null
+let rateLimitEstimatedTimeToFull = null
+let rateLimitEstimateRegen = 5 // seconds to regenerate 1 request
+
 /* express.get("/", function(request, result) {
 	result.sendFile(__dirname + "/app/index.html")
 }) */
@@ -192,10 +203,10 @@ express.get("/api/nearby-stations", function(request, result) {
 	.then(function (nearbyStations) {
 		result.json(nearbyStations)
 	})
-	.catch(function (error) {
-		console.log(error.error)
-		result.status(error.code)
-		result.json(error.error)
+	.catch(function(error) {
+		console.log("Sending error:", error)
+		result.status(error.statusCode)
+		result.json(error)
 	})
 })
 
@@ -204,22 +215,35 @@ async function getNearbyStations(radius) {
 		let error = new Error()
 		error.name = "InternalStateError"
 		error.message = "No current system"
-		return Promise.reject({
-			"code": 500,
-			"error": error
-		})
+		error.statusCode = 500
+		return Promise.reject(error)
 	}
 	// currentSystem = "Diaguandri"
 	console.log("Getting stations near "+currentSystem+" from EDSM")
-	return requestpromise("https://www.edsm.net/api-v1/sphere-systems?systemName="+currentSystem+"&radius="+radius+"&showId=1")
-	.catch(function(error) {
-		// this will bubble down to the bottom catch, which will recognize it because it has a code
-		return Promise.reject({
-			"code": 503,
-			"error": error
-		})
+	return requestpromise({
+		"uri": "https://www.edsm.net/api-v1/sphere-systems?systemName="+currentSystem+"&radius="+radius+"&showId=1",
+		resolveWithFullResponse: true, // get headers
+		simple: false // don't auto-reject non-2xx error codes, we need the headers
+	})
+	.then(function(response) {
+		let headers = response.headers
+		
+		rateLimitPool = headers["x-rate-limit-remaining"]
+		rateLimitMax = headers["x-rate-limit-limit"]
+		rateLimitTimeToFull = headers["x-rate-limit-reset"]
+		rateLimitEstimatedPool = rateLimitPool
+		rateLimitEstimatedTimeToFull = rateLimitTimeToFull
+		rateLimitLastUsed = new Date()
+		sendRateLimitInformation()
+		
+		if (response.statusCode != 200) {
+			return Promise.reject(response)
+		}
+		
+		return response.body
 	})
 	.then(async function(json) {
+		console.log("Parsing the JSON")
 		try {
 			var systems = JSON.parse(json)
 		} catch {
@@ -229,9 +253,31 @@ async function getNearbyStations(radius) {
 		for (i = 0; i < systems.length; i++) {
 			let system = systems[i]
 			// console.log(system)
-			promises.push(requestpromise("https://www.edsm.net/api-system-v1/stations/?systemId="+system.id))
+			console.log("Getting stations for " + system.name)
+			promises.push(requestpromise({
+				uri: "https://www.edsm.net/api-system-v1/stations/?systemId="+system.id,
+				resolveWithFullResponse: true // get headers
+			}))
 		}
 		return await Promise.all(promises)
+		.then(function(stationResponseArray) {
+			console.log("Station API calls collected")
+			let stationHeadersArray = stationResponseArray.map((response) => response.headers)
+			let rateLimitPoolArray = stationHeadersArray.map((headers) => headers["x-rate-limit-remaining"])
+			let rateLimitLimitArray = stationHeadersArray.map((headers) => headers["x-rate-limit-limit"])
+			let rateLimitTimeToFullArray = stationHeadersArray.map((headers) => headers["x-rate-limit-reset"])
+			// see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/apply#Using_apply_and_built-in_functions
+			rateLimitPool = Math.min.apply(null, rateLimitPoolArray)
+			rateLimitMax = Math.min.apply(null, rateLimitLimitArray)
+			rateLimitTimeToFull = Math.min.apply(null, rateLimitTimeToFullArray)
+			rateLimitEstimatedPool = rateLimitPool
+			rateLimitEstimatedTimeToFull = rateLimitTimeToFull
+			rateLimitLastUsed = new Date()
+			sendRateLimitInformation()
+			
+			let stationJSONarray = stationResponseArray.map((response) => response.body)
+			return stationJSONarray
+		})
 		.then(function(stationJSONarray) {
 			// console.log(stationJSONarray)
 			let nearbyStations = []
@@ -280,8 +326,8 @@ async function getNearbyStations(radius) {
 			}
 			return 0
 		})
-		console.log("--------")
-		console.log(nearbyStations)
+		// console.log("--------")
+		// console.log(nearbyStations)
 		// result.json(systems)
 		// result.json(nearbyStations)
 		// return systems
@@ -289,17 +335,46 @@ async function getNearbyStations(radius) {
 	})
 	.catch(function(error) {
 		console.log(error)
-		let code = 500
-		if (error.code != undefined) {
-			// this came from above, it's already wrapped up properly with a response code
-			return Promise.reject(error)
-		}
-		return Promise.reject({
-			"code": code,
-			"error": error
-		})
+		return Promise.reject(error)
 	})
 }
+
+function getRateLimitInformation() {
+	return {
+		"available": rateLimitPool,
+		"max": rateLimitMax,
+		"timeToFull": rateLimitTimeToFull,
+		"asOf": rateLimitLastUsed,
+		"estimatedAvailableNow": rateLimitEstimatedPool,
+		"estimatedTimeToFull": rateLimitEstimatedTimeToFull
+	}
+}
+express.get("/api/ratelimit", function(request, result) {
+	result.json(getRateLimitInformation())
+})
+async function sendRateLimitInformation() {
+	console.log("Sending rate limit information")
+	socketio.emit("rate-limit-info", getRateLimitInformation())
+}
+async function sendRateLimitEstimate() {
+	if (calcRateLimitEstimate() == false) {
+		return Promise.resolve("Nothing to do")
+	}
+	return socketio.emit("rate-limit-estimate", {
+		"estimatedAvailable": rateLimitEstimatedPool,
+		"estimatedTimeToFull": rateLimitEstimatedTimeToFull
+	})
+}
+function calcRateLimitEstimate() {
+	if (rateLimitLastUsed == null) {
+		return false
+	}
+	let now = new Date()
+	rateLimitEstimatedPool = rateLimitPool + (now-rateLimitLastUsed)/rateLimitEstimateRegen
+	return true
+}
+
+setInterval(sendRateLimitEstimate, 200)
 
 express.get("/api/hudmatrix", function(request, result) {
 	getHUDMatrix()
