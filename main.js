@@ -19,7 +19,7 @@ let rateLimitLastUsed = null
 
 let rateLimitEstimatedPool = null
 let rateLimitEstimatedTimeToFull = null
-let rateLimitEstimateRegen = 5 // seconds to regenerate 1 request
+let rateLimitEstimateRegen = rateLimitSafeInterval // seconds to regenerate 1 request
 
 /* express.get("/", function(request, result) {
 	result.sendFile(__dirname + "/app/index.html")
@@ -438,7 +438,7 @@ function calcRateLimitEstimate() {
 	let now = new Date()
 	let timeElapsed = (now.getTime() - rateLimitLastUsed.getTime()) / 1000
 	rateLimitEstimatedPool = rateLimitPool + Math.floor(timeElapsed/rateLimitEstimateRegen)
-	rateLimitEstimatedTimeToFull = rateLimitTimeToFull - Math.floor(timeElapsed)
+	rateLimitEstimatedTimeToFull = rateLimitTimeToFull - Math.round(timeElapsed)
 	
 	if (rateLimitEstimatedPool > rateLimitMax) {
 		rateLimitEstimatedPool = rateLimitMax
