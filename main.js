@@ -266,15 +266,22 @@ async function getStationsInSystems(systems) {
 	.then(function(data) {
 		return JSON.parse(data)
 	})
-	.then(function(json) {
-		let error = new Error()
-		error.name = "InternalStateError"
-		error.message = "Unimplemented"
-		error.statusCode = 500
-		return Promise.reject(error)
+	.then(function(stations) {
+		let systemNames = systems.map((system) => system.name)
+		console.log("Systems to search:", JSON.stringify(systemNames))
+		console.log("Filtering stations from cache")
+		return stations.filter((station) => {
+			return systemNames.includes(station.systemName)
+		})
+	})
+	.then(function(stations) {
+		console.log("Filtering done")
+		console.log(stations)
+		return stations
 	})
 	.catch(async function(error) {
 		console.log("Couldn't read stations cache; falling back to EDSM")
+		console.log(error)
 		
 		var promises = []
 		for (i = 0; i < systems.length; i++) {
@@ -305,33 +312,11 @@ async function getStationsInSystems(systems) {
 			let stationJSONarray = stationResponseArray.map((response) => response.body)
 			return stationJSONarray
 		})
-	})
-}
-async function getNearbyStations(radius) {
-	if (currentSystem == null) {
-		let error = new Error()
-		error.name = "InternalStateError"
-		error.message = "No current system"
-		error.statusCode = 500
-		return Promise.reject(error)
-	}
-	// currentSystem = "Diaguandri"
-	console.log("Getting stations near "+currentSystem+" from EDSM")
-	return getSystemInfo(currentSystem, radius)
-	.then(function(json) {
-		console.log("Parsing the JSON")
-		try {
-			var systems = JSON.parse(json)
-		} catch {
-			console.log("Invalid JSON from EDSM")
-		}
-		return getStationsInSystems(systems)
 		.then(function(stationJSONarray) {
-			// console.log(stationJSONarray)
 			let nearbyStations = []
 			for (i = 0; i < stationJSONarray.length; i++) {
+				let stationsJSON = stationJSONarray[i]
 				try {
-					let stationsJSON = stationJSONarray[i]
 					var systemInfo = JSON.parse(stationsJSON)
 				} catch {
 					console.log("Invalid station JSON from EDSM: "+stationsJSON)
@@ -358,6 +343,27 @@ async function getNearbyStations(radius) {
 			}
 			return nearbyStations
 		})
+	})
+}
+async function getNearbyStations(radius) {
+	if (currentSystem == null) {
+		let error = new Error()
+		error.name = "InternalStateError"
+		error.message = "No current system"
+		error.statusCode = 500
+		return Promise.reject(error)
+	}
+	// currentSystem = "Diaguandri"
+	console.log("Getting stations near "+currentSystem+" from EDSM")
+	return getSystemInfo(currentSystem, radius)
+	.then(function(json) {
+		console.log("Parsing the JSON")
+		try {
+			var systems = JSON.parse(json)
+		} catch {
+			console.log("Invalid JSON from EDSM")
+		}
+		return getStationsInSystems(systems)
 	})
 	.then(function(nearbyStations) {
 		nearbyStations.sort(function(a, b) {
