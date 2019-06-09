@@ -245,13 +245,13 @@ async function getSystemInfo(system, radius) {
 		.then(function(response) {
 			let headers = response.headers
 			
-			rateLimitPool = Number(headers["x-rate-limit-remaining"])
+			/* rateLimitPool = Number(headers["x-rate-limit-remaining"])
 			rateLimitMax = Number(headers["x-rate-limit-limit"])
 			rateLimitTimeToFull = Number(headers["x-rate-limit-reset"])
 			rateLimitEstimatedPool = rateLimitPool
 			rateLimitEstimatedTimeToFull = rateLimitTimeToFull
 			rateLimitLastUsed = new Date()
-			sendRateLimitInformation()
+			sendRateLimitInformation() */
 			
 			if (response.statusCode != 200) {
 				return Promise.reject(response)
