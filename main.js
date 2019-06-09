@@ -228,9 +228,9 @@ async function getNearbyStations(radius) {
 	.then(function(response) {
 		let headers = response.headers
 		
-		rateLimitPool = headers["x-rate-limit-remaining"]
-		rateLimitMax = headers["x-rate-limit-limit"]
-		rateLimitTimeToFull = headers["x-rate-limit-reset"]
+		rateLimitPool = Number(headers["x-rate-limit-remaining"])
+		rateLimitMax = Number(headers["x-rate-limit-limit"])
+		rateLimitTimeToFull = Number(headers["x-rate-limit-reset"])
 		rateLimitEstimatedPool = rateLimitPool
 		rateLimitEstimatedTimeToFull = rateLimitTimeToFull
 		rateLimitLastUsed = new Date()
@@ -358,10 +358,12 @@ async function sendRateLimitInformation() {
 }
 async function sendRateLimitEstimate() {
 	if (calcRateLimitEstimate() == false) {
-		return Promise.resolve("Nothing to do")
+		// return Promise.resolve("Nothing to do")
 	}
+	console.log("Sending rate limit estimate")
 	return socketio.emit("rate-limit-estimate", {
 		"estimatedAvailable": rateLimitEstimatedPool,
+		"max": rateLimitMax,
 		"estimatedTimeToFull": rateLimitEstimatedTimeToFull
 	})
 }
@@ -370,11 +372,18 @@ function calcRateLimitEstimate() {
 		return false
 	}
 	let now = new Date()
-	rateLimitEstimatedPool = rateLimitPool + (now-rateLimitLastUsed)/rateLimitEstimateRegen
+	let timeElapsed = (now.getTime() - rateLimitLastUsed.getTime()) / 1000
+	rateLimitEstimatedPool = rateLimitPool + Math.floor(timeElapsed/rateLimitEstimateRegen)
+	rateLimitEstimatedTimeToFull = rateLimitTimeToFull - Math.floor(timeElapsed)
+	
+	if (rateLimitEstimatedPool > rateLimitMax) {
+		rateLimitEstimatedPool = rateLimitMax
+	}
+	if (rateLimitEstimatedTimeToFull < 0) {
+		rateLimitEstimatedTimeToFull = 0
+	}
 	return true
 }
-
-setInterval(sendRateLimitEstimate, 200)
 
 express.get("/api/hudmatrix", function(request, result) {
 	getHUDMatrix()
