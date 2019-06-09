@@ -518,7 +518,25 @@ async function getHUDMatrix() {
 }
 
 express.get("/api/hudcolorfilter.svg", function(request, result) {
-	generateHUDFilterSVG()
+	var safariMode = request.query.safari
+	if (safariMode == 1 || safariMode == "true" || safariMode == "yes") {
+		safariMode = true
+	}
+	if (safariMode == 0 || safariMode == "false" || safariMode == "no") {
+		safariMode = false
+	}
+	console.log("Safari mode:", safariMode)
+	if (safariMode == undefined) {
+		// client didn't specify, look at the user agent
+		safariMode = false
+		let userAgent = request.headers["user-agent"]
+		console.log("User agent:", userAgent)
+		if (/.*WebKit.*/.test(userAgent)) {
+			console.log("HUD color filter: Safari mode")
+			safariMode = true // Safari will stubbornly use sRGB for the matrix, we need to undo that
+		}
+	}
+	generateHUDFilterSVG(safariMode)
 	.then(function(svg) {
 		result.set("Content-Type", "application/svg")
 		result.send(svg)
@@ -538,7 +556,7 @@ express.get("/api/regenerate-hud-filter", function(request, result) {
 		result.json(String(error))
 	})
 })
-async function generateHUDFilterSVG() {
+async function generateHUDFilterSVG(safariMode=false) {
 	return getHUDMatrix()
 	.catch(function(error) {
 		console.log("Couldn't get HUD matrix:", error)
@@ -573,11 +591,19 @@ async function generateHUDFilterSVG() {
 		let svgFilter = `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
 	<defs>
-		<filter id="HUD">
-			<feColorMatrix in="SourceGraphic" type="matrix" values="\n${fullMatrixStr}" />
+		<filter id="HUD" color-interpolation-filters="linearRGB">
+			<feColorMatrix in="SourceGraphic" type="matrix" values="${fullMatrixStr}" />`
+			+ ((safariMode) ? `
+			<!-- this corrects for Safari always using sRGB, even if we tell it not to -->
+			<feComponentTransfer>
+				<feFuncR type="gamma" exponent="0.45" />
+				<feFuncG type="gamma" exponent="0.45" />
+				<feFuncB type="gamma" exponent="0.45" />
+			</feComponentTransfer>`
+			: "") + `
 		</filter>
 	</defs>
-	<circle cx="64" cy="64" r="64" id="circle" fill="#FFA040" filter="url(#HUD)" />
+	<!-- <circle cx="64" cy="64" r="64" id="circle" fill="#FFA040" filter="url(#HUD)" /> -->
 </svg>`
 		console.log("Completed SVG filter:\n" + svgFilter)
 		
