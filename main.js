@@ -4,6 +4,12 @@ let server = require("http").Server(express)
 let socketio = require("socket.io")(server)
 let requestpromise = require("request-promise-native")
 
+var fs = require("fs")
+
+var util = require("util")
+fs.readFilePromise = util.promisify(fs.readFile)
+fs.writeFilePromise = util.promisify(fs.writeFile)
+
 // rate limiting for EDSM
 let rateLimitPool = null
 let rateLimitMax = null
@@ -48,7 +54,6 @@ server.listen(3000, function() {
 
 // set up journal watching
 
-var fs = require("fs")
 var path = require("path")
 var chokidar = require("chokidar")
 
@@ -200,7 +205,7 @@ express.get("/api/nearby-stations", function(request, result) {
 		r = 1
 	}
 	getNearbyStations(r)
-	.then(function (nearbyStations) {
+	.then(function(nearbyStations) {
 		result.json(nearbyStations)
 	})
 	.catch(function(error) {
@@ -210,45 +215,67 @@ express.get("/api/nearby-stations", function(request, result) {
 	})
 })
 
-async function getNearbyStations(radius) {
-	if (currentSystem == null) {
+async function getSystemInfo(system, radius) {
+	return fs.readFilePromise("systemsWithoutCoordinates.json")
+	.then(function(data) {
+		return JSON.parse(data)
+	})
+	.then(function(json) {
+		// console.log("Read file contents:", json)
+		
 		let error = new Error()
 		error.name = "InternalStateError"
-		error.message = "No current system"
+		error.message = "Unimplemented"
 		error.statusCode = 500
 		return Promise.reject(error)
-	}
-	// currentSystem = "Diaguandri"
-	console.log("Getting stations near "+currentSystem+" from EDSM")
-	return requestpromise({
-		"uri": "https://www.edsm.net/api-v1/sphere-systems?systemName="+currentSystem+"&radius="+radius+"&showId=1",
-		resolveWithFullResponse: true, // get headers
-		simple: false // don't auto-reject non-2xx error codes, we need the headers
 	})
-	.then(function(response) {
-		let headers = response.headers
+	.catch(function(error) {
+		// return Promise.reject(error)
 		
-		rateLimitPool = Number(headers["x-rate-limit-remaining"])
-		rateLimitMax = Number(headers["x-rate-limit-limit"])
-		rateLimitTimeToFull = Number(headers["x-rate-limit-reset"])
-		rateLimitEstimatedPool = rateLimitPool
-		rateLimitEstimatedTimeToFull = rateLimitTimeToFull
-		rateLimitLastUsed = new Date()
-		sendRateLimitInformation()
+		console.log("Couldn't read systems cache; falling back to EDSM")
 		
-		if (response.statusCode != 200) {
-			return Promise.reject(response)
-		}
-		
-		return response.body
+		return requestpromise({
+			"uri": "https://www.edsm.net/api-v1/sphere-systems?systemName="+system+"&radius="+radius+"&showId=1",
+			resolveWithFullResponse: true, // get headers
+			simple: false // don't auto-reject non-2xx error codes, we need the headers
+		})
+		.then(function(response) {
+			let headers = response.headers
+			
+			rateLimitPool = Number(headers["x-rate-limit-remaining"])
+			rateLimitMax = Number(headers["x-rate-limit-limit"])
+			rateLimitTimeToFull = Number(headers["x-rate-limit-reset"])
+			rateLimitEstimatedPool = rateLimitPool
+			rateLimitEstimatedTimeToFull = rateLimitTimeToFull
+			rateLimitLastUsed = new Date()
+			sendRateLimitInformation()
+			
+			if (response.statusCode != 200) {
+				return Promise.reject(response)
+			}
+			
+			return response.body
+		})
+		.catch(function(error) {
+			return Promise.reject(error)
+		})
 	})
-	.then(async function(json) {
-		console.log("Parsing the JSON")
-		try {
-			var systems = JSON.parse(json)
-		} catch {
-			console.log("Invalid JSON from EDSM")
-		}
+}
+async function getStationsInSystems(systems) {
+	return fs.readFilePromise("stations.json")
+	.then(function(data) {
+		return JSON.parse(data)
+	})
+	.then(function(json) {
+		let error = new Error()
+		error.name = "InternalStateError"
+		error.message = "Unimplemented"
+		error.statusCode = 500
+		return Promise.reject(error)
+	})
+	.catch(async function(error) {
+		console.log("Couldn't read stations cache; falling back to EDSM")
+		
 		var promises = []
 		for (i = 0; i < systems.length; i++) {
 			let system = systems[i]
@@ -278,6 +305,27 @@ async function getNearbyStations(radius) {
 			let stationJSONarray = stationResponseArray.map((response) => response.body)
 			return stationJSONarray
 		})
+	})
+}
+async function getNearbyStations(radius) {
+	if (currentSystem == null) {
+		let error = new Error()
+		error.name = "InternalStateError"
+		error.message = "No current system"
+		error.statusCode = 500
+		return Promise.reject(error)
+	}
+	// currentSystem = "Diaguandri"
+	console.log("Getting stations near "+currentSystem+" from EDSM")
+	return getSystemInfo(currentSystem, radius)
+	.then(function(json) {
+		console.log("Parsing the JSON")
+		try {
+			var systems = JSON.parse(json)
+		} catch {
+			console.log("Invalid JSON from EDSM")
+		}
+		return getStationsInSystems(systems)
 		.then(function(stationJSONarray) {
 			// console.log(stationJSONarray)
 			let nearbyStations = []
@@ -334,7 +382,7 @@ async function getNearbyStations(radius) {
 		return nearbyStations
 	})
 	.catch(function(error) {
-		console.log(error)
+		// console.log(error)
 		return Promise.reject(error)
 	})
 }
@@ -396,9 +444,6 @@ express.get("/api/hudmatrix", function(request, result) {
 	})
 })
 
-var util = require("util")
-fs.readFilePromise = util.promisify(fs.readFile)
-fs.writeFilePromise = util.promisify(fs.writeFile)
 var xml2js = require("xml2js")
 xml2js.parseStringPromise = util.promisify(xml2js.parseString)
 

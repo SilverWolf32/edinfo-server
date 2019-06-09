@@ -1,0 +1,16 @@
+#!/bin/zsh
+
+URL=
+
+case $1 in
+	"stations") URL="https://www.edsm.net/dump/stations.json" ;;
+	"systems") URL="https://www.edsm.net/dump/systemsWithoutCoordinates.json" ;;
+	"populatedSystems") URL="https://www.edsm.net/dump/systemsPopulated.json" ;;
+	*)
+		echo "usage: cache stations|systems|populatedSystems" 1>&2
+		exit 1
+		;;
+esac
+
+echo "Downloading $URL"
+curl -O $URL
