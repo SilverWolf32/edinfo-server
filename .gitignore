@@ -9,3 +9,7 @@ Session.vim
 node_modules/
 npm-debug.log
 npm-debug.log.*
+
+# station/system caches from EDSM
+/stations.json
+/systems*.json
