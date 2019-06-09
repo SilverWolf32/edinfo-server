@@ -276,8 +276,18 @@ async function getStationsInSystems(systems) {
 	})
 	.then(function(stations) {
 		console.log("Filtering done")
-		console.log(stations)
+		// console.log(stations)
 		return stations
+	})
+	.then(function(stations) {
+		console.log("Adding distances")
+		// slap distances on them
+		return stations.map((station) => {
+			let system = systems.filter((system) => system.id == station.systemId)[0]
+			// console.log(system.name)
+			station.distance = system.distance
+			return station
+		})
 	})
 	.catch(async function(error) {
 		console.log("Couldn't read stations cache; falling back to EDSM")
