@@ -210,6 +210,9 @@ express.get("/api/nearby-stations", function(request, result) {
 	})
 	.catch(function(error) {
 		console.log("Sending error:", error)
+		if (error.statusCode == undefined) {
+			error.statusCode = 500 // generic server error
+		}
 		result.status(error.statusCode)
 		result.json(error)
 	})
