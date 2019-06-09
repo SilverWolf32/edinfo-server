@@ -216,7 +216,7 @@ express.get("/api/nearby-stations", function(request, result) {
 })
 
 async function getSystemInfo(system, radius) {
-	return fs.readFilePromise("systemsWithoutCoordinates.json")
+	return fs.readFilePromise("systemsPopulated.json")
 	.then(function(data) {
 		return JSON.parse(data)
 	})

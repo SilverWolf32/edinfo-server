@@ -4,10 +4,10 @@ URL=
 
 case $1 in
 	"stations") URL="https://www.edsm.net/dump/stations.json" ;;
-	"systems") URL="https://www.edsm.net/dump/systemsWithoutCoordinates.json" ;;
-	"populatedSystems") URL="https://www.edsm.net/dump/systemsPopulated.json" ;;
+	"systems") URL="https://www.edsm.net/dump/systemsPopulated.json" ;;
+	"allSystemsWithoutCoordinates") URL="https://www.edsm.net/dump/systemsWithoutCoordinates.json" ;;
 	*)
-		echo "usage: cache stations|systems|populatedSystems" 1>&2
+		echo "usage: cache stations|systems|allSystemsWithoutCoordinates" 1>&2
 		exit 1
 		;;
 esac
