@@ -618,8 +618,3 @@ async function regenerateHUDFilterSVGFile() {
 	})
 }
 
-regenerateHUDFilterSVGFile()
-.catch(function(error) {
-	console.log(error)
-})
-
