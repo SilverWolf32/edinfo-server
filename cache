@@ -13,4 +13,4 @@ case $1 in
 esac
 
 echo "Downloading $URL"
-curl -O $URL
+curl -C - -O $URL
