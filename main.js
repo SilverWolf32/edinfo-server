@@ -203,17 +203,24 @@ fs.readFile(path.join(journalDir, "Status.json"), "utf8", function(error, data) 
 })
 
 function sendCurrentInfo() {
-	payload = {
-		"system": currentSystem,
-		"station": currentStation
+	{
+		payload = {
+			"system": currentSystem,
+			"station": currentStation
+		}
+		data = JSON.stringify(payload, null, "\t")
+		console.log("Broadcasting location update:", data)
+		socketio.emit("update-location", data)
 	}
-	data = JSON.stringify(payload, null, "\t")
-	sendJournalEvent(data)
-}
-
-function sendJournalEvent(event) {
-	console.log("Sending journal event: " + event)
-	socketio.emit("new-data", event)
+	{
+		payload = {
+			"cmdr": cmdrInfo,
+			"ship": shipInfo
+		}
+		data = JSON.stringify(payload, null, "\t")
+		console.log("Broadcasting CMDR update:", data)
+		socketio.emit("update-cmdr", data)
+	}
 }
 
 express.get("/api/nearby-stations", function(request, result) {
