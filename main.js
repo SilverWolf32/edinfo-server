@@ -21,6 +21,15 @@ let rateLimitEstimatedPool = null
 let rateLimitEstimatedTimeToFull = null
 let rateLimitEstimateRegen = rateLimitSafeInterval // seconds to regenerate 1 request
 
+var cmdrInfo = {
+	"cmdrName": null
+}
+var shipInfo = {
+	"type": null,
+	"name": null,
+	"id": null
+}
+
 /* express.get("/", function(request, result) {
 	result.sendFile(__dirname + "/app/index.html")
 }) */
@@ -111,8 +120,8 @@ fs.readFile(path.join(journalDir, "Status.json"), "utf8", function(error, data) 
 	
 	function updateJournal(path) {
 		if (!watching) {
-			console.log("Received event, but chokidar not ready")
-			return // chokidar spits out lots of update events before it's ready
+			// console.log("Received event, but chokidar not ready")
+			// return // chokidar spits out lots of update events before it's ready
 		}
 		console.log("Received journal data in " + path)
 		fs.readFile(path, "utf8", function(error, data) {
@@ -162,6 +171,15 @@ fs.readFile(path.join(journalDir, "Status.json"), "utf8", function(error, data) 
 				} else if (event.event == "Undocked") {
 					currentSystem = event.StarSystem
 					currentStation = null
+				} else if (event.event == "LoadGame" || event.event == "Loadout") {
+					if (event.Commander != undefined) {
+						cmdrInfo.cmdrName = event.Commander
+					}
+					shipInfo.type = event.Ship
+					shipInfo.name = event.ShipName
+					shipInfo.id   = event.ShipIdent
+				} else if (event.event == "Statistics") {
+					
 				} else {
 					continue // not the right kind of event, so skip it
 				}
@@ -618,3 +636,9 @@ async function regenerateHUDFilterSVGFile() {
 	})
 }
 
+express.get("/api/shipinfo", function(request, result) {
+	result.json(shipInfo)
+})
+express.get("/api/cmdrinfo", function(request, result) {
+	result.json(cmdrInfo)
+})
