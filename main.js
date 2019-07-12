@@ -26,7 +26,7 @@ let rateLimitEstimateRegen = rateLimitSafeInterval // seconds to regenerate 1 re
 }) */
 express.use(expressStatic("app"))
 
-express.get("/api", function(request, result) {
+express.get("/api/location", function(request, result) {
 	// result.sendFile(__dirname + "/test.html")
 	result.json({
 		"system": currentSystem,
