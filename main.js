@@ -153,7 +153,9 @@ fs.readFile(path.join(journalDir, "Status.json"), "utf8", function(error, data) 
 				
 				// filter for Location, FSDJump events
 				if (event.event == "Location") {
-					currentSystem = event.StarSystem
+					if (event.StarSystem != null) {
+						currentSystem = event.StarSystem
+					}
 					if (event.Docked) {
 						currentStation = event.StationName
 					} else {
@@ -169,7 +171,9 @@ fs.readFile(path.join(journalDir, "Status.json"), "utf8", function(error, data) 
 					currentSystem = event.StarSystem
 					currentStation = event.StationName
 				} else if (event.event == "Undocked") {
-					currentSystem = event.StarSystem
+					if (event.StarSystem != null) {
+						currentSystem = event.StarSystem
+					}
 					currentStation = null
 				} else if (event.event == "LoadGame" || event.event == "Loadout") {
 					if (event.Commander != undefined) {
