@@ -3,6 +3,7 @@ let expressStatic = require("serve-static") // comes with Express
 let server = require("http").Server(express)
 let socketio = require("socket.io")(server)
 let requestpromise = require("request-promise-native")
+var path = require("path")
 
 var fs = require("fs")
 
@@ -20,6 +21,20 @@ let rateLimitLastUsed = null
 let rateLimitEstimatedPool = null
 let rateLimitEstimatedTimeToFull = null
 let rateLimitEstimateRegen = rateLimitSafeInterval // seconds to regenerate 1 request
+
+// path.normalize() and path.join() to correctly handle Windows paths
+var journalDir = path.normalize(path.join(require("os").homedir(), "Saved Games/Frontier Developments/Elite Dangerous"))
+var hudFile = path.normalize(path.join(require("os").homedir(), "AppData/Local/Frontier Developments/Elite Dangerous/Options/Graphics/GraphicsConfigurationOverride.xml"))
+
+// Node.js argv: arguments start at argv[2]!
+if (process.argv.length > 2) {
+	journalDir = path.normalize(process.argv[2])
+	console.log("Set journal path to", journalDir)
+}
+if (process.argv.length > 3) {
+	hudFile = path.normalize(process.argv[3])
+	console.log("Set HUD file path to", hudFile)
+}
 
 var cmdrInfo = {
 	"cmdrName": null
@@ -63,13 +78,9 @@ server.listen(3000, function() {
 
 // set up journal watching
 
-var path = require("path")
 var chokidar = require("chokidar")
 
 var watching = false
-
-// path.normalize() and path.join() to correctly handle Windows paths
-var journalDir = path.normalize(path.join(require("os").homedir(), "Saved Games/Frontier Developments/Elite Dangerous"))
 
 var latestEvent = null
 var currentSystem = null
@@ -499,8 +510,6 @@ async function getHUDMatrix() {
 	console.log("Fetching HUD...")
 	
 	// return Promise.reject("Not implemented")
-	
-	let hudFile = path.normalize(path.join(require("os").homedir(), "AppData/Local/Frontier Developments/Elite Dangerous/Options/Graphics/GraphicsConfigurationOverride.xml"))
 	
 	return fs.readFilePromise(hudFile, "utf8")
 	.catch(function(error) {
