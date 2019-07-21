@@ -11,10 +11,10 @@
 	"author": "SilverWolf",
 	"license": "Unlicense",
 	"dependencies": {
-		"chokidar": "^2.0.4",
-		"express": "^4.16.4",
+		"chokidar": "^3.0.2",
+		"express": "^4.17.1",
 		"request": "^2.88.0",
-		"request-promise-native": "^1.0.5",
+		"request-promise-native": "^1.0.7",
 		"socket.io": "^2.2.0",
 		"xml2js": "^0.4.19"
 	}
