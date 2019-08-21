@@ -25,6 +25,21 @@ You should **only** use it on your local network, where you're reasonably confid
 
 You can also block it with your firewall, if you only plan on using it from the same machine.
 
+## Alternate file locations
+
+By default, the journals are assumed to be where Elite puts them on Windows:
+
+|            |                                                   |
+|------------|---------------------------------------------------|
+| Journals   | Saved Games/Frontier Developments/Elite Dangerous |
+| HUD matrix | AppData/Local/Frontier Developments/Elite Dangerous/Options/Graphics/GraphicsConfigurationOverride.xml |
+
+You can tell edinfo-server to look for them somewhere else by passing the joural folder and HUD matrix file as arguments to the program.
+
+```
+node main.js /path/to/journals /path/to/GraphicsConfigurationOverride.xml
+```
+
 ## Using a local cache
 
 You can download a local cache of EDSM's station data from [their website][edsm-station-dump] and place it here, or run `./cache stations`. It's about 40 MB.
