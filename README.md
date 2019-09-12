@@ -42,7 +42,7 @@ node main.js /path/to/journals /path/to/GraphicsConfigurationOverride.xml
 
 ## Using a local cache
 
-You can download a local cache of EDSM's station data from [their website][edsm-station-dump] and place it here, or run `./cache stations`. It's about 40 MB.
+You can download a local cache of EDSM's station data [from their website][edsm-station-dump] and place it here, or run `./cache stations`. It's about 40 MB.
 
 **A local station cache is highly recommended**, as otherwise you'll hit EDSM's rate limit in only a few requests! This happens because the server makes a separate API call for every nearby system in order to get the stations in it. If you're not using a cache, you can see EDSM's rate limiting information in the top right of the web app.
 
@@ -50,7 +50,7 @@ When the rate limit display is recharging, _that is an estimate_. It is only 100
 
 `./cache` supports downloading the systems cache, but using it is currently not implemented, and the server will fall back to EDSM anyway.
 
-(`./cache` has a zsh shebang line, but it should work just fine with bash. It also assumes you have [cURL](https://curl.haxx.se/) installed.)
+It also assumes you have [cURL](https://curl.haxx.se/) installed. If you don't want to install it, you can change the script to use wget instead or [download the stations cache manually][edsm-station-dump].
 
 [webapp]: https://github.com/SilverWolf32/edinfo-server-webapp
 [edsm-station-dump]: https://www.edsm.net/dump/stations.json
