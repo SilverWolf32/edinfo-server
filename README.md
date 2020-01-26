@@ -31,8 +31,8 @@ By default, the journals are assumed to be where Elite puts them on Windows:
 
 |            |                                                   |
 |------------|---------------------------------------------------|
-| Journals   | Saved Games/Frontier Developments/Elite Dangerous |
-| HUD matrix | AppData/Local/Frontier Developments/Elite Dangerous/Options/Graphics/GraphicsConfigurationOverride.xml |
+| Journals   | ~/Saved Games/Frontier Developments/Elite Dangerous |
+| HUD matrix | ~/AppData/Local/Frontier Developments/Elite Dangerous/Options/Graphics/GraphicsConfigurationOverride.xml |
 
 You can tell edinfo-server to look for them somewhere else by passing the joural folder and HUD matrix file as arguments to the program.
 
