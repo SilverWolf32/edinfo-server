@@ -577,11 +577,11 @@ async function getHUDMatrix() {
 
 express.get("/api/hudcolorfilter.svg", function(request, result) {
 	var safariMode = request.query.safari
-	if (safariMode == 1 || safariMode == "true" || safariMode == "yes") {
-		safariMode = true
+	if (safariMode == "true" || safariMode == "yes") {
+		safariMode = 1
 	}
-	if (safariMode == 0 || safariMode == "false" || safariMode == "no") {
-		safariMode = false
+	if (safariMode == "false" || safariMode == "no") {
+		safariMode = 0
 	}
 	console.log("Safari mode:", safariMode)
 	if (safariMode == undefined) {
@@ -591,11 +591,15 @@ express.get("/api/hudcolorfilter.svg", function(request, result) {
 		console.log("User agent:", userAgent)
 		if (/.*WebKit.*/.test(userAgent)) {
 			console.log("HUD color filter: Safari mode")
-			safariMode = true // Safari will stubbornly use sRGB for the matrix, we need to undo that
+			safariMode = 1 // Safari will stubbornly use sRGB for the matrix, we need to undo that
+		}
+		if (/.*Epiphany.*/.test(userAgent)) {
+			console.log("HUD color filter: Actually Epiphany")
+			safariMode = 2 // Epiphany needs the <feComponentTransfer />, but needs it to just be a no-op! Weird.
 		}
 		if (/.*Chrome.*/.test(userAgent)) {
 			console.log("HUD color filter: Actually Chromium-based")
-			safariMode = false // Chrome doesn't do this
+			safariMode = 0 // Chrome doesn't do this
 		}
 	}
 	generateHUDFilterSVG(safariMode)
@@ -655,14 +659,24 @@ async function generateHUDFilterSVG(safariMode=false) {
 	<defs>
 		<filter id="HUD" color-interpolation-filters="linearRGB">
 			<feColorMatrix in="SourceGraphic" type="matrix" values="${fullMatrixStr}" />`
-			+ ((safariMode) ? `
+		if (safariMode == 1) {
+			svgFilter += `
 			<!-- this corrects for Safari always using sRGB, even if we tell it not to -->
 			<feComponentTransfer>
 				<feFuncR type="gamma" exponent="0.45" />
 				<feFuncG type="gamma" exponent="0.45" />
 				<feFuncB type="gamma" exponent="0.45" />
 			</feComponentTransfer>`
-			: "") + `
+		} else if (safariMode == 2) {
+			svgFilter += `
+			<!-- this corrects for Safari always using sRGB, even if we tell it not to -->
+			<feComponentTransfer>
+				<feFuncR type="gamma" exponent="1" />
+				<feFuncG type="gamma" exponent="1" />
+				<feFuncB type="gamma" exponent="1" />
+			</feComponentTransfer>`
+		}
+		svgFilter += `
 		</filter>
 	</defs>
 	<!-- <circle cx="64" cy="64" r="64" id="circle" fill="#FFA040" filter="url(#HUD)" /> -->
