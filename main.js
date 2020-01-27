@@ -237,6 +237,18 @@ function sendCurrentInfo() {
 		socketio.emit("update-cmdr", data)
 	}
 }
+function sendStatusUpdate(message, clientID) {
+	console.log("Sending status update to client", clientID)
+	if (clientID == null) {
+		return
+	}
+	payload = {
+		"message": message
+	}
+	data = JSON.stringify(payload, null, "\t")
+	console.log("Sending status update:", data)
+	socketio.to(clientID).emit("status-update", data)
+}
 
 express.get("/api/nearby-stations", function(request, result) {
 	try {
@@ -244,7 +256,11 @@ express.get("/api/nearby-stations", function(request, result) {
 	} catch {
 		r = 1
 	}
-	getNearbyStations(r)
+	clientID = request.query.clientID
+	if (clientID == undefined) {
+		clientID = null
+	}
+	getNearbyStations(r, clientID)
 	.then(function(nearbyStations) {
 		result.json(nearbyStations)
 	})
@@ -258,7 +274,7 @@ express.get("/api/nearby-stations", function(request, result) {
 	})
 })
 
-async function getSystemInfo(system, radius) {
+async function getSystemInfo(system, radius, clientID) {
 	return fs.readFilePromise("systemsPopulated.json")
 	.then(function(data) {
 		return JSON.parse(data)
@@ -276,6 +292,7 @@ async function getSystemInfo(system, radius) {
 		// return Promise.reject(error)
 		
 		console.log("Couldn't read systems cache; falling back to EDSM")
+		sendStatusUpdate("Getting systems from EDSM...", clientID)
 		
 		return requestpromise({
 			"uri": "https://www.edsm.net/api-v1/sphere-systems?systemName="+system+"&radius="+radius+"&showId=1",
@@ -304,7 +321,7 @@ async function getSystemInfo(system, radius) {
 		})
 	})
 }
-async function getStationsInSystems(systems) {
+async function getStationsInSystems(systems, clientID) {
 	return fs.readFilePromise("stations.json")
 	.then(function(data) {
 		return JSON.parse(data)
@@ -313,6 +330,7 @@ async function getStationsInSystems(systems) {
 		let systemNames = systems.map((system) => system.name)
 		console.log("Systems to search:", JSON.stringify(systemNames))
 		console.log("Filtering stations from cache")
+		sendStatusUpdate("Filtering stations from cache...", clientID)
 		return stations.filter((station) => {
 			return systemNames.includes(station.systemName)
 		})
@@ -324,6 +342,7 @@ async function getStationsInSystems(systems) {
 	})
 	.then(function(stations) {
 		console.log("Adding distances")
+		sendStatusUpdate("Adding distances...", clientID)
 		// slap distances on them
 		return stations.map((station) => {
 			let system = systems.filter((system) => system.id == station.systemId)[0]
@@ -337,6 +356,7 @@ async function getStationsInSystems(systems) {
 		console.log(error)
 		
 		var promises = []
+		sendStatusUpdate("Getting stations from EDSM...", clientID)
 		for (i = 0; i < systems.length; i++) {
 			let system = systems[i]
 			// console.log(system)
@@ -398,7 +418,7 @@ async function getStationsInSystems(systems) {
 		})
 	})
 }
-async function getNearbyStations(radius) {
+async function getNearbyStations(radius, clientID) {
 	if (currentSystem == null) {
 		let error = new Error()
 		error.name = "InternalStateError"
@@ -408,7 +428,7 @@ async function getNearbyStations(radius) {
 	}
 	// currentSystem = "Diaguandri"
 	console.log("Getting stations near "+currentSystem+" from EDSM")
-	return getSystemInfo(currentSystem, radius)
+	return getSystemInfo(currentSystem, radius, clientID)
 	.then(function(json) {
 		console.log("Parsing the JSON")
 		try {
