@@ -653,17 +653,31 @@ async function generateHUDFilterSVG(safariMode=false) {
 		] */
 		
 		// convert the numbers to strings and prettify them
-		// but only if flatMap is available
-		if (fullMatrix.flatMap !== undefined) {
-			let allWidths = fullMatrix.flatMap((row) => {
-				return row.map((n) => String(n).length)
-			})
-			let justificationWidth = Math.max(...allWidths)
-			
-			fullMatrix = fullMatrix.map((row) => {
-				return row.map((n) => String(n).padStart(justificationWidth))
-			})
+		
+		let allWidths = fullMatrix.map((row) => {
+			return row.map((n) => String(n).length)
+		})
+		let justificationWidths = []
+		// loop through columns, finding max width for each column
+		for (let col = 0; col < allWidths[0].length; col++) {
+			justificationWidths[col] = 0
+			for (let row = 0; row < allWidths.length; row++) {
+				if (allWidths[row][col] > justificationWidths[col]) {
+					justificationWidths[col] = allWidths[row][col]
+				}
+			}
 		}
+		
+		fullMatrix = fullMatrix.map((row) => {
+			// pad out the row with proper widths for each column
+			let newRow = []
+			for (let col = 0; col < row.length; col++) {
+				let s = String(row[col]).padStart(justificationWidths[col])
+				newRow.push(s)
+			}
+			return newRow
+		})
+		
 		let fullMatrixStr = fullMatrix.map((row) => row.join(" ")).join("\n\t\t\t\t")
 		
 		let svgFilter = `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
