@@ -3,14 +3,16 @@
 URL=
 
 case $1 in
-	"stations") URL="https://www.edsm.net/dump/stations.json" ;;
-	"systems") URL="https://www.edsm.net/dump/systemsPopulated.json" ;;
-	"allSystemsWithoutCoordinates") URL="https://www.edsm.net/dump/systemsWithoutCoordinates.json" ;;
+	"stations") URL="https://www.edsm.net/dump/stations.json.gz" ;;
+	"systems") URL="https://www.edsm.net/dump/systemsPopulated.json.gz" ;;
+	"allSystemsWithoutCoordinates") URL="https://www.edsm.net/dump/systemsWithoutCoordinates.json.gz" ;;
 	*)
 		echo "usage: cache stations|systems|allSystemsWithoutCoordinates" 1>&2
 		exit 1
 		;;
 esac
 
+FILE=${URL##*/}
+
 echo "Downloading $URL"
-curl --compressed -C - -O $URL
+curl -C - -O $URL && gunzip $FILE
