@@ -652,13 +652,27 @@ async function generateHUDFilterSVG(safariMode=false) {
 			[0, 0, 0, 1, 0]
 		] */
 		
-		let fullMatrixStr = fullMatrix.map((row) => row.join(" ")).join("\n")
+		// convert the numbers to strings and prettify them
+		// but only if flatMap is available
+		if (fullMatrix.flatMap !== undefined) {
+			let allWidths = fullMatrix.flatMap((row) => {
+				return row.map((n) => String(n).length)
+			})
+			let justificationWidth = Math.max(...allWidths)
+			
+			fullMatrix = fullMatrix.map((row) => {
+				return row.map((n) => String(n).padStart(justificationWidth))
+			})
+		}
+		let fullMatrixStr = fullMatrix.map((row) => row.join(" ")).join("\n\t\t\t\t")
 		
 		let svgFilter = `<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
 	<defs>
 		<filter id="HUD" color-interpolation-filters="linearRGB">
-			<feColorMatrix in="SourceGraphic" type="matrix" values="${fullMatrixStr}" />`
+			<feColorMatrix in="SourceGraphic" type="matrix" values="
+				${fullMatrixStr}
+			" />`
 		if (safariMode == 1) {
 			svgFilter += `
 			<!-- this corrects for Safari always using sRGB, even if we tell it not to -->
