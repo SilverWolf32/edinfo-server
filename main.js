@@ -436,7 +436,7 @@ async function getNearbyStations(radius, clientID) {
 		} catch {
 			console.log("Invalid JSON from EDSM")
 		}
-		return getStationsInSystems(systems)
+		return getStationsInSystems(systems, clientID)
 	})
 	.then(function(nearbyStations) {
 		nearbyStations.sort(function(a, b) {
