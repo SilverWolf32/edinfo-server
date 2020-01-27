@@ -573,6 +573,10 @@ express.get("/api/hudcolorfilter.svg", function(request, result) {
 			console.log("HUD color filter: Safari mode")
 			safariMode = true // Safari will stubbornly use sRGB for the matrix, we need to undo that
 		}
+		if (/.*Chrome.*/.test(userAgent)) {
+			console.log("HUD color filter: Actually Chromium-based")
+			safariMode = false // Chrome doesn't do this
+		}
 	}
 	generateHUDFilterSVG(safariMode)
 	.then(function(svg) {
