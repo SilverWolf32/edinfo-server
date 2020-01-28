@@ -431,6 +431,7 @@ async function getNearbyStations(radius, clientID) {
 	return getSystemInfo(currentSystem, radius, clientID)
 	.then(function(json) {
 		console.log("Parsing the JSON")
+		sendStatusUpdate("Parsing EDSM results...", clientID)
 		try {
 			var systems = JSON.parse(json)
 		} catch {
