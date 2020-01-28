@@ -281,12 +281,29 @@ async function getSystemInfo(system, radius, clientID) {
 	})
 	.then(function(json) {
 		// console.log("Read file contents:", json)
+		sendStatusUpdate("Loading systems cache...", clientID)
+		return fs.readFilePromise("stations.json")
+	})
+	.then(function(data) {
+		return JSON.parse(data)
+	})
+	.then(function(systems) {
+		let thisSystem = systems.find((candidateSystem) => {
+			return candidateSystem.name == system
+		})
 		
-		let error = new Error()
-		error.name = "InternalStateError"
-		error.message = "Unimplemented"
-		error.statusCode = 500
-		return Promise.reject(error)
+		thisSystem = null
+		if (thisSystem == null) {
+			let error = new Error()
+			error.name = "CacheError"
+			error.message = "Couldn't find system in cache"
+			error.statusCode = 404
+			return Promise.reject(error)
+		}
+		return thisSystem
+	})
+	.then(function(thisSystem) {
+		// let foundSystems
 	})
 	.catch(function(error) {
 		// return Promise.reject(error)
@@ -315,6 +332,16 @@ async function getSystemInfo(system, radius, clientID) {
 			}
 			
 			return response.body
+		})
+		.then(function(json) {
+			console.log("Parsing the JSON")
+			sendStatusUpdate("Parsing EDSM results...", clientID)
+			try {
+				var systems = JSON.parse(json)
+			} catch {
+				console.log("Invalid JSON from EDSM")
+			}
+			return systems
 		})
 		.catch(function(error) {
 			return Promise.reject(error)
@@ -429,14 +456,7 @@ async function getNearbyStations(radius, clientID) {
 	// currentSystem = "Diaguandri"
 	console.log("Getting stations near "+currentSystem+" from EDSM")
 	return getSystemInfo(currentSystem, radius, clientID)
-	.then(function(json) {
-		console.log("Parsing the JSON")
-		sendStatusUpdate("Parsing EDSM results...", clientID)
-		try {
-			var systems = JSON.parse(json)
-		} catch {
-			console.log("Invalid JSON from EDSM")
-		}
+	.then(function(systems) {
 		return getStationsInSystems(systems, clientID)
 	})
 	.then(function(nearbyStations) {
