@@ -246,7 +246,7 @@ function sendStatusUpdate(message, clientID) {
 		"message": message
 	}
 	data = JSON.stringify(payload, null, "\t")
-	console.log("Sending status update:", data)
+	// console.log("Sending status update:", data)
 	socketio.to(clientID).emit("status-update", data)
 }
 
@@ -275,24 +275,18 @@ express.get("/api/nearby-stations", function(request, result) {
 })
 
 async function getSystemInfo(system, radius, clientID) {
+	sendStatusUpdate("Loading systems cache...", clientID)
 	return fs.readFilePromise("systemsPopulated.json")
 	.then(function(data) {
 		return JSON.parse(data)
 	})
-	.then(function(json) {
-		// console.log("Read file contents:", json)
-		sendStatusUpdate("Loading systems cache...", clientID)
-		return fs.readFilePromise("stations.json")
-	})
-	.then(function(data) {
-		return JSON.parse(data)
-	})
 	.then(function(systems) {
+		sendStatusUpdate("Finding nearby systems in cache...", clientID)
+		
 		let thisSystem = systems.find((candidateSystem) => {
 			return candidateSystem.name == system
 		})
 		
-		thisSystem = null
 		if (thisSystem == null) {
 			let error = new Error()
 			error.name = "CacheError"
@@ -300,13 +294,29 @@ async function getSystemInfo(system, radius, clientID) {
 			error.statusCode = 404
 			return Promise.reject(error)
 		}
-		return thisSystem
-	})
-	.then(function(thisSystem) {
-		// let foundSystems
+		
+		let systemsFiltered = 0
+		let foundSystems = []
+		for (let candidateSystem of systems) {
+			let dx = candidateSystem.coords.x - thisSystem.coords.x
+			let dy = candidateSystem.coords.y - thisSystem.coords.y
+			let dz = candidateSystem.coords.z - thisSystem.coords.z
+			
+			let distance = Math.sqrt(dx**2 + dy**2 + dz**2)
+			
+			systemsFiltered++
+			sendStatusUpdate("Finding nearby systems ["+systemsFiltered+"/"+systems.length+"]...", clientID)
+			
+			if (distance <= radius) {
+				candidateSystem.distance = distance
+				foundSystems.push(candidateSystem)
+			}
+		}
+		
+		return foundSystems
 	})
 	.catch(function(error) {
-		// return Promise.reject(error)
+		return Promise.reject(error)
 		
 		console.log("Couldn't read systems cache; falling back to EDSM")
 		sendStatusUpdate("Getting systems from EDSM...", clientID)
@@ -454,7 +464,7 @@ async function getNearbyStations(radius, clientID) {
 		return Promise.reject(error)
 	}
 	// currentSystem = "Diaguandri"
-	console.log("Getting stations near "+currentSystem+" from EDSM")
+	console.log("Getting stations near "+currentSystem+"...")
 	return getSystemInfo(currentSystem, radius, clientID)
 	.then(function(systems) {
 		return getStationsInSystems(systems, clientID)
