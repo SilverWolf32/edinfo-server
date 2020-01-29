@@ -6,7 +6,8 @@ case $1 in
 	"stations") URL="https://www.edsm.net/dump/stations.json.gz" ;;
 	"systems" | "systems-nofilter" | "systems-filteronly") URL="https://www.edsm.net/dump/systemsPopulated.json.gz" ;;
 	*)
-		echo "usage: cache <stations | systems | systems-filteronly>" 1>&2
+		echo "usage: cache <stations | systems | systems-nofilter | systems-filteronly>" 1>&2
+		echo "(The systems cache is normally filtered to discard extraneous data; systems-nofilter and systems-filteronly provide more control over this.)" 1>&2
 		exit 1
 		;;
 esac
