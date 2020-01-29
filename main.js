@@ -313,7 +313,9 @@ async function getSystemInfo(system, radius, clientID) {
 			let distance = Math.sqrt(dx**2 + dy**2 + dz**2)
 			
 			systemsFiltered++
-			sendStatusUpdate("Finding nearby systems ["+systemsFiltered+"/"+systems.length+"]...", clientID)
+			if (systemsFiltered % 1000 == 0) {
+				sendStatusUpdate("Finding nearby systems ["+systemsFiltered+"/"+systems.length+"]...", clientID)
+			}
 			
 			if (distance <= radius) {
 				candidateSystem.distance = distance
