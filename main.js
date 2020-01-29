@@ -399,7 +399,7 @@ async function getStationsInSystems(systems, clientID) {
 		sendStatusUpdate("Adding distances...", clientID)
 		// slap distances on them
 		return stations.map((station) => {
-			let system = systems.filter((system) => system.id == station.systemId)[0]
+			let system = systems.find((system) => system.name == station.systemName)
 			// console.log(system.name)
 			station.distance = system.distance
 			return station

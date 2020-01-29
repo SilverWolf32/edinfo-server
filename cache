@@ -4,15 +4,49 @@ URL=
 
 case $1 in
 	"stations") URL="https://www.edsm.net/dump/stations.json.gz" ;;
-	"systems") URL="https://www.edsm.net/dump/systemsPopulated.json.gz" ;;
-	"allSystemsWithoutCoordinates") URL="https://www.edsm.net/dump/systemsWithoutCoordinates.json.gz" ;;
+	"systems" | "systems-nofilter" | "systems-filteronly") URL="https://www.edsm.net/dump/systemsPopulated.json.gz" ;;
 	*)
-		echo "usage: cache stations|systems|allSystemsWithoutCoordinates" 1>&2
+		echo "usage: cache <stations | systems | systems-filteronly>" 1>&2
 		exit 1
 		;;
 esac
 
-FILE=${URL##*/}
+if [ "$1" = "systems-nofilter" ]; then
+	NOFILTER=1
+fi
+if [ "$1" = "systems-filteronly" ]; then
+	FILTERONLY=1
+fi
 
-echo "Downloading $URL"
-curl -C - -O $URL && gunzip $FILE
+GZ=${URL##*/}
+FILE=${GZ%.gz}
+
+if [ -z "$FILTERONLY" ]; then
+	echo "Downloading $URL"
+	curl -C - -O $URL && gunzip $GZ || exit 1
+fi
+
+if [ -z "$NOFILTER" -a "$1" = "systems" -o -n "$FILTERONLY" ]; then
+	echo "Stripping extraneous system data"
+node <<END
+	const fs = require("fs")
+	let inputJSON = fs.readFileSync("$FILE")
+	console.log("Parsing the JSON")
+	let systems = JSON.parse(inputJSON)
+	console.log(systems.length + " systems")
+	
+	console.log("Filtering attributes")
+	systems = systems.map((system) => {
+		let newSystem = {}
+		newSystem.name = system.name
+		newSystem.id = system.id
+		newSystem.coords = system.coords
+		return newSystem
+	})
+	
+	console.log("Reserializing")
+	let outputJSON = JSON.stringify(systems)
+	console.log("Saving")
+	fs.writeFileSync("$FILE", outputJSON)
+END
+fi
