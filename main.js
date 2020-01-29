@@ -22,6 +22,8 @@ let rateLimitEstimatedPool = null
 let rateLimitEstimatedTimeToFull = null
 let rateLimitEstimateRegen = rateLimitSafeInterval // seconds to regenerate 1 request
 
+let systemsCache = null
+
 // path.normalize() and path.join() to correctly handle Windows paths
 var journalDir = path.normalize(path.join(require("os").homedir(), "Saved Games/Frontier Developments/Elite Dangerous"))
 var hudFile = path.normalize(path.join(require("os").homedir(), "AppData/Local/Frontier Developments/Elite Dangerous/Options/Graphics/GraphicsConfigurationOverride.xml"))
@@ -276,11 +278,17 @@ express.get("/api/nearby-stations", function(request, result) {
 
 async function getSystemInfo(system, radius, clientID) {
 	sendStatusUpdate("Loading systems cache...", clientID)
-	return fs.readFilePromise("systemsPopulated.json")
-	.then(function(data) {
-		return JSON.parse(data)
-	})
-	.then(function(systems) {
+	if (systemsCache != null) {
+		cachePromise = Promise.resolve(systemsCache)
+	} else {
+		cachePromise = fs.readFilePromise("systemsPopulated.json")
+		.then(function(data) {
+			systemsCache = JSON.parse(data)
+			return systemsCache
+		})
+	}
+	
+	return cachePromise.then(function(systems) {
 		sendStatusUpdate("Finding nearby systems in cache...", clientID)
 		
 		let thisSystem = systems.find((candidateSystem) => {
