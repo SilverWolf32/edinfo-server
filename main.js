@@ -23,6 +23,7 @@ let rateLimitEstimatedTimeToFull = null
 let rateLimitEstimateRegen = rateLimitSafeInterval // seconds to regenerate 1 request
 
 let systemsCache = null
+let stationsCache = null
 
 // path.normalize() and path.join() to correctly handle Windows paths
 var journalDir = path.normalize(path.join(require("os").homedir(), "Saved Games/Frontier Developments/Elite Dangerous"))
@@ -369,16 +370,22 @@ async function getSystemInfo(system, radius, clientID) {
 	})
 }
 async function getStationsInSystems(systems, clientID) {
-	return fs.readFilePromise("stations.json")
-	.then(function(data) {
-		return JSON.parse(data)
-	})
-	.then(function(stations) {
+	sendStatusUpdate("Loading stations cache...", clientID)
+	if (stationsCache != null) {
+		cachePromise = Promise.resolve(stationsCache)
+	} else {
+		cachePromise = fs.readFilePromise("stations.json")
+		.then(function(data) {
+			stationsCache = JSON.parse(data)
+			return stationsCache
+		})
+	}
+	return cachePromise.then(function() {
 		let systemNames = systems.map((system) => system.name)
 		console.log("Systems to search:", JSON.stringify(systemNames))
 		console.log("Filtering stations from cache")
 		sendStatusUpdate("Filtering stations from cache...", clientID)
-		return stations.filter((station) => {
+		return stationsCache.filter((station) => {
 			return systemNames.includes(station.systemName)
 		})
 	})
