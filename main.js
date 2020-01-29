@@ -315,7 +315,7 @@ async function getSystemInfo(system, radius, clientID) {
 			
 			systemsFiltered++
 			if (systemsFiltered % 1000 == 0) {
-				sendStatusUpdate("Finding nearby systems ["+systemsFiltered+"/"+systems.length+"]...", clientID)
+				sendStatusUpdate("Calculating distances ["+systemsFiltered+"/"+systems.length+"]...", clientID)
 			}
 			
 			if (distance <= radius) {
