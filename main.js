@@ -22,6 +22,8 @@ let rateLimitEstimatedPool = null
 let rateLimitEstimatedTimeToFull = null
 let rateLimitEstimateRegen = rateLimitSafeInterval // seconds to regenerate 1 request
 
+let systemsCache = null
+
 // path.normalize() and path.join() to correctly handle Windows paths
 var journalDir = path.normalize(path.join(require("os").homedir(), "Saved Games/Frontier Developments/Elite Dangerous"))
 var hudFile = path.normalize(path.join(require("os").homedir(), "AppData/Local/Frontier Developments/Elite Dangerous/Options/Graphics/GraphicsConfigurationOverride.xml"))
@@ -246,7 +248,7 @@ function sendStatusUpdate(message, clientID) {
 		"message": message
 	}
 	data = JSON.stringify(payload, null, "\t")
-	console.log("Sending status update:", data)
+	// console.log("Sending status update:", data)
 	socketio.to(clientID).emit("status-update", data)
 }
 
@@ -275,21 +277,54 @@ express.get("/api/nearby-stations", function(request, result) {
 })
 
 async function getSystemInfo(system, radius, clientID) {
-	return fs.readFilePromise("systemsPopulated.json")
-	.then(function(data) {
-		return JSON.parse(data)
-	})
-	.then(function(json) {
-		// console.log("Read file contents:", json)
+	sendStatusUpdate("Loading systems cache...", clientID)
+	if (systemsCache != null) {
+		cachePromise = Promise.resolve(systemsCache)
+	} else {
+		cachePromise = fs.readFilePromise("systemsPopulated.json")
+		.then(function(data) {
+			systemsCache = JSON.parse(data)
+			return systemsCache
+		})
+	}
+	
+	return cachePromise.then(function(systems) {
+		sendStatusUpdate("Finding nearby systems in cache...", clientID)
 		
-		let error = new Error()
-		error.name = "InternalStateError"
-		error.message = "Unimplemented"
-		error.statusCode = 500
-		return Promise.reject(error)
+		let thisSystem = systems.find((candidateSystem) => {
+			return candidateSystem.name == system
+		})
+		
+		if (thisSystem == null) {
+			let error = new Error()
+			error.name = "CacheError"
+			error.message = "Couldn't find system in cache"
+			error.statusCode = 404
+			return Promise.reject(error)
+		}
+		
+		let systemsFiltered = 0
+		let foundSystems = []
+		for (let candidateSystem of systems) {
+			let dx = candidateSystem.coords.x - thisSystem.coords.x
+			let dy = candidateSystem.coords.y - thisSystem.coords.y
+			let dz = candidateSystem.coords.z - thisSystem.coords.z
+			
+			let distance = Math.sqrt(dx**2 + dy**2 + dz**2)
+			
+			systemsFiltered++
+			sendStatusUpdate("Finding nearby systems ["+systemsFiltered+"/"+systems.length+"]...", clientID)
+			
+			if (distance <= radius) {
+				candidateSystem.distance = distance
+				foundSystems.push(candidateSystem)
+			}
+		}
+		
+		return foundSystems
 	})
 	.catch(function(error) {
-		// return Promise.reject(error)
+		return Promise.reject(error)
 		
 		console.log("Couldn't read systems cache; falling back to EDSM")
 		sendStatusUpdate("Getting systems from EDSM...", clientID)
@@ -315,6 +350,16 @@ async function getSystemInfo(system, radius, clientID) {
 			}
 			
 			return response.body
+		})
+		.then(function(json) {
+			console.log("Parsing the JSON")
+			sendStatusUpdate("Parsing EDSM results...", clientID)
+			try {
+				var systems = JSON.parse(json)
+			} catch {
+				console.log("Invalid JSON from EDSM")
+			}
+			return systems
 		})
 		.catch(function(error) {
 			return Promise.reject(error)
@@ -427,16 +472,9 @@ async function getNearbyStations(radius, clientID) {
 		return Promise.reject(error)
 	}
 	// currentSystem = "Diaguandri"
-	console.log("Getting stations near "+currentSystem+" from EDSM")
+	console.log("Getting stations near "+currentSystem+"...")
 	return getSystemInfo(currentSystem, radius, clientID)
-	.then(function(json) {
-		console.log("Parsing the JSON")
-		sendStatusUpdate("Parsing EDSM results...", clientID)
-		try {
-			var systems = JSON.parse(json)
-		} catch {
-			console.log("Invalid JSON from EDSM")
-		}
+	.then(function(systems) {
 		return getStationsInSystems(systems, clientID)
 	})
 	.then(function(nearbyStations) {
