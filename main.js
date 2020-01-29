@@ -324,7 +324,7 @@ async function getSystemInfo(system, radius, clientID) {
 		return foundSystems
 	})
 	.catch(function(error) {
-		return Promise.reject(error)
+		// return Promise.reject(error)
 		
 		console.log("Couldn't read systems cache; falling back to EDSM")
 		sendStatusUpdate("Getting systems from EDSM...", clientID)
