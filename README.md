@@ -48,9 +48,10 @@ You can download a local cache of EDSM's station data [from their website][edsm-
 
 When the rate limit display is recharging, _that is an estimate_. It is only 100% reliable at the moment you make a request.
 
-`./cache` supports downloading the systems cache, but using it is currently not implemented, and the server will fall back to EDSM anyway.
+A local systems cache will speed things up immensely, since no requests to EDSM need to be made at all -- but only if you are in a populated system. Otherwise it will fall back to EDSM.
 
-It also assumes you have [cURL](https://curl.haxx.se/) installed. If you don't want to install it, you can change the script to use wget instead or [download the stations cache manually][edsm-station-dump].
+The cache script also assumes you have [cURL](https://curl.haxx.se/) installed. If you don't want to install it, you can change the script to use wget instead or download the caches manually ([stations][edsm-station-dump], [systems][edsm-systems-dump]).
 
 [webapp]: https://github.com/SilverWolf32/edinfo-server-webapp
-[edsm-station-dump]: https://www.edsm.net/dump/stations.json
+[edsm-station-dump]: https://www.edsm.net/dump/stations.json.gz
+[edsm-systems-dump]: https://www.edsm.net/dump/systemsPopulated.json.gz
